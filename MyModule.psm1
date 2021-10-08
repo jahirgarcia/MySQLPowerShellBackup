@@ -14,20 +14,18 @@ function Backup {
   $ExcludedDatabases = $ExcludedDatabases + $Exclude
   
   $Dir = Get-Date -Format "yyyy-MM-dd"
-  $Path = "$Path/$Dir"
 
-  New-Item -Path $Path -ItemType Directory -ErrorAction SilentlyContinue > $null
-  Set-Location $Path
+  New-Item -Path "$Path/$Dir" -ItemType Directory -ErrorAction SilentlyContinue > $null
 
   mysql -h $Host --port $Port -u $User --password=$Password -N -e 'show databases' | ForEach-Object {
-    $Database=$_
+    $Database = $_
 
     if( $ExcludedDatabases -contains $Database ) {
       Write-Output "Se omitio $Database"
     } else {
 
       mysqldump -h $Host --port $Port -u $User --password=$Password `
-      -R $Database > "$Database.sql"
+      -R $Database > "$Path/$Dir/$Database.sql"
 
       if( $LastExitCode -eq 0 ) {
         Write-Output "Respaldo de $Database completado con exito"
@@ -36,6 +34,9 @@ function Backup {
       }
     }
   }
+
+  Compress-Archive -Path "$Path/$Dir/*.sql" -Update -DestinationPath "$Path/$Dir.zip"
+  Remove-Item -Path "$Path/$Dir" -Recurse
 }
 
 Export-ModuleMember -Function Backup
